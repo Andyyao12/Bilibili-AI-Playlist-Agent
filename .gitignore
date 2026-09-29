@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+
+# build output (CI and users build it from source; not committed)
+dist/
+
+# local secrets — never commit
+.env
+.env.local
+.env.*.local
+
+# editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log
+.vite/
+.playwright-cli/
+
+# AI assistant workspace (local only)
+.codebuddy/
+
+# large demo video: hosted as a GitHub Release asset, not in git history
+docs/assets/demo.mp4
+
+# archives
+*.zip

@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: typecheck & build (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20', '22']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install dependencies (locked)
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Verify build output matches manifest
+        run: |
+          set -euo pipefail
+          for file in manifest.json background.js content.js sidepanel.html icons/icon16.png icons/icon48.png icons/icon128.png; do
+            if [ ! -f "dist/$file" ]; then
+              echo "::error::missing build artifact: dist/$file"
+              exit 1
+            fi
+          done
+          echo "all manifest-referenced artifacts are present in dist/"
+
+      - name: Ensure no secrets were committed
+        run: |
+          set -euo pipefail
+          if [ -f .env ]; then
+            echo "::error::.env must never be committed"
+            exit 1
+          fi
+          if git grep -nE '(sk-[A-Za-z0-9_-]{16,}|Authorization: Bearer )' -- . ':!package-lock.json'; then
+            echo "::error::possible hardcoded credential found"
+            exit 1
+          fi
+          echo "no obvious credentials detected"
