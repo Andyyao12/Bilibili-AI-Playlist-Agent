@@ -252,11 +252,16 @@ A single failing case does **not** abort the run: the suite continues, prints a 
 JSON, the real candidate pool and the resulting queue, and tallies failures by class
 (`network` / `http` / `parse` / `empty`).
 
-Current real-model status: **case A passed** against a live model. Case B hit a transient
-`fetch failed` network error, which is now handled by the bounded retry added in the reliability pass
-(up to 3 attempts with backoff for network errors, 429 and 5xx; never retried for 400/401/403 or malformed output).
-Re-run `npm run verify:llm` with your own credentials to reproduce the full A–F table — the project does not ship
-any API key, so this suite cannot be executed in CI.
+This suite runs against a **live** model using your own credentials — the project ships no API key, so it cannot be
+executed in CI. Capture an auditable report of a run (intent JSON per case, the real candidate pool, the final
+queue, and the failure tally; API keys are redacted by the logger):
+
+```bash
+npm run verify:llm:report     # writes verify-llm-report.log next to the project root
+```
+
+The report file is the source of truth for the current pass/fail state — this README deliberately does not restate
+per-case results, because they depend on the model and on Bilibili's live search results at the moment you run it.
 
 ---
 

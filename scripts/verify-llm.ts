@@ -19,6 +19,7 @@
  * 单个用例失败不会中断后续用例，最后会打印 A–F 汇总表与失败分类统计。
  * 日志只包含地址、模型名、错误码与耗时，绝不打印 API Key / Authorization / 请求体。
  */
+import { writeFile } from 'node:fs/promises';
 import { LlmClient, LlmError, FAILURE_LABEL } from '../src/services/llm';
 import { parseIntent } from '../src/services/intent';
 import {
@@ -32,6 +33,27 @@ import {
 import { enableConsoleLogging } from '../src/utils/logger';
 import { buildSearchKeyword, buildSearchUrl, normalizeVideoUrl } from '../src/utils/text';
 import type { Candidate, Intent, LlmConfig } from '../src/types';
+
+/**
+ * --out <file> 会把整轮验收报告（含模型返回的意图 JSON、真实候选池、最终队列、
+ * 失败分类统计）完整落到文件里，便于事后核对与归档。
+ * 报告里不可能出现 API Key —— LlmClient 与 logger 都做了脱敏。
+ */
+const outputPath = readArg('out');
+const captured: string[] = [];
+const tee =
+  (sink: (...args: unknown[]) => void) =>
+  (...args: unknown[]) => {
+    const line = args
+      .map((value) => (typeof value === 'string' ? value : JSON.stringify(value) ?? String(value)))
+      .join(' ');
+    captured.push(line);
+    sink(line);
+  };
+console.log = tee(console.log.bind(console));
+console.info = tee(console.info.bind(console));
+console.warn = tee(console.warn.bind(console));
+console.error = tee(console.error.bind(console));
 
 // Node 环境没有 Vite 的 DEV 标志，这里显式打开控制台日志，
 // 这样重试告警与失败分类都会实时打印出来。
@@ -394,5 +416,14 @@ console.log(
 );
 console.log('说明：意图与排序结论均来自真实模型；搜索结果来自真实 search.bilibili.com。');
 console.log('日志中的 [LLM][网络失败] / [LLM][HTTP 失败] / [LLM][JSON 解析失败] / [LLM][模型主动返回空选择] 可直接区分失败类型。');
+
+if (outputPath) {
+  try {
+    await writeFile(outputPath, `${captured.join('\n')}\n`, 'utf8');
+    console.log(`\n报告已写入：${outputPath}（共 ${captured.length} 行，密钥已由 logger 脱敏）`);
+  } catch (error) {
+    console.error(`写报告失败：${error instanceof Error ? error.message : String(error)}`);
+  }
+}
 
 process.exit(passCount === CASES.length ? 0 : 1);
