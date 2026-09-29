@@ -34,6 +34,8 @@ each video ends.
 
 *Click the cover to watch the demo (MP4, ~70s, hosted as a GitHub Release asset).*
 
+<sub>Demo contains third-party music from Bilibili, for product demonstration only.</sub>
+
 The whole pipeline runs on the real website:
 
 ```
