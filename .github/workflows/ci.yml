@@ -50,6 +50,10 @@ jobs:
           done
           echo "all manifest-referenced artifacts are present in dist/"
 
+      # 扫描的是"真实凭证格式"，而不是 `Authorization: Bearer ` 这种字面量：
+      # 后者在任何文档里都会合法出现（SECURITY.md 就是这么写的），而且它匹配不到真正的密钥
+      # ——真实密钥在 Bearer 之后，形式千变万化，能识别的是密钥自身的前缀。
+      # 工作流文件自身也含有下面这段模式，因此一并排除，避免 grep 自命中。
       - name: Ensure no secrets were committed
         run: |
           set -euo pipefail
@@ -57,7 +61,8 @@ jobs:
             echo "::error::.env must never be committed"
             exit 1
           fi
-          if git grep -nE '(sk-[A-Za-z0-9_-]{16,}|Authorization: Bearer )' -- . ':!package-lock.json'; then
+          if git grep -nE '(sk-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16})' \
+               -- . ':!package-lock.json' ':!.github/**'; then
             echo "::error::possible hardcoded credential found"
             exit 1
           fi
